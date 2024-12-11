@@ -1,8 +1,12 @@
-from chromdriver.db_util import get_connection
-from chromdriver.crud import create_table, create_orders_table, insert_data, insert_order, read_data, read_orders, filter_query, join_query
-from chromdriver.queries import aggregate_query
+from chromdriver.db import get_db, engine
+from chromdriver.models import Base
+from chromdriver.crud import create_automobile, read_automobiles, create_order, read_orders
+from chromdriver.queries import join_query, filter_query, aggregate_query
 
-def menu(cursor):
+Base.metadata.create_all(bind=engine)
+
+def menu():
+    db = next(get_db())
     while True:
         print("\n1. Показати всі авто")
         print("2. Додати авто")
@@ -15,48 +19,38 @@ def menu(cursor):
         choice = input("Виберіть опцію: ")
 
         if choice == "1":
-            rows = read_data(cursor)
-            for row in rows:
-                print(row)
+            autos = read_automobiles(db)
+            for auto in autos:
+                print(auto.id, auto.brand, auto.model, auto.price)
         elif choice == "2":
             brand = input("Введіть марку авто: ")
             model = input("Введіть модель авто: ")
             price = float(input("Введіть ціну авто: "))
-            insert_data(cursor, brand, model, price)
+            create_automobile(db, brand, model, price)
         elif choice == "3":
             threshold = float(input("Введіть поріг ціни: "))
-            filter_query(cursor, threshold)
+            autos = filter_query(db, threshold)
+            for auto in autos:
+                print(auto.id, auto.brand, auto.model, auto.price)
         elif choice == "4":
-            aggregate_query(cursor)
+            avg_price = aggregate_query(db)
+            print(f"Середня ціна авто: {avg_price}")
         elif choice == "5":
             automobile_id = int(input("Введіть ID автомобіля: "))
             order_date = input("Введіть дату замовлення (YYYY-MM-DD): ")
-            insert_order(cursor, automobile_id, order_date)
+            create_order(db, automobile_id, order_date)
         elif choice == "6":
-            orders = read_orders(cursor)
+            orders = read_orders(db)
             for order in orders:
-                print(order)
+                print(order.id, order.automobile_id, order.order_date)
         elif choice == "7":
-            join_query(cursor)
+            results = join_query(db)
+            for result in results:
+                print(result)
         elif choice == "0":
             break
         else:
             print("Невірний вибір, спробуйте ще раз.")
 
 if __name__ == "__main__":
-    try:
-        connection = get_connection()
-        cursor = connection.cursor()
-
-        # Створення таблиць, якщо вони ще не створені
-        create_table(cursor)
-        create_orders_table(cursor)
-
-        # Запуск меню
-        menu(cursor)
-
-        # Закриття підключення
-        cursor.close()
-        connection.close()
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    menu()
